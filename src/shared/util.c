@@ -7871,7 +7871,7 @@ int openpt_in_namespace(pid_t pid, int flags) {
         if (recvmsg(pair[0], &mh, MSG_NOSIGNAL|MSG_CMSG_CLOEXEC) < 0)
                 return -errno;
 
-        for (cmsg = CMSG_FIRSTHDR(&mh); cmsg; cmsg = CMSG_NXTHDR(&mh, cmsg))
+        CMSG_FOREACH(cmsg, &mh)
                 if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
                         int *fds;
                         unsigned n_fds;
@@ -8357,6 +8357,57 @@ ssize_t string_table_lookup(const char * const *table, size_t len, const char *k
                         return (ssize_t)i;
 
         return -1;
+}
+
+void cmsg_close_all(struct msghdr *mh) {
+        struct cmsghdr *cmsg;
+
+        assert(mh);
+
+        CMSG_FOREACH(cmsg, mh)
+                if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS)
+                        close_many((int*) CMSG_DATA(cmsg), (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int));
+}
+
+int rename_noreplace(int olddirfd, const char *oldpath, int newdirfd, const char *newpath) {
+        struct stat buf;
+        int ret;
+
+        ret = renameat2(olddirfd, oldpath, newdirfd, newpath, RENAME_NOREPLACE);
+        if (ret >= 0)
+                return 0;
+
+        /* Even though renameat2() exists since Linux 3.15, btrfs added
+         * support for it later. If it is not implemented, fallback to another
+         * method. */
+        if (errno != EINVAL)
+                return -errno;
+
+        /* The link()/unlink() fallback does not work on directories. But
+         * renameat() without RENAME_NOREPLACE gives the same semantics on
+         * directories, except when newpath is an *empty* directory. This is
+         * good enough. */
+        ret = fstatat(olddirfd, oldpath, &buf, AT_SYMLINK_NOFOLLOW);
+        if (ret >= 0 && S_ISDIR(buf.st_mode)) {
+                ret = renameat(olddirfd, oldpath, newdirfd, newpath);
+                return ret >= 0 ? 0 : -errno;
+        }
+
+        /* If it is not a directory, use the link()/unlink() fallback. */
+        ret = linkat(olddirfd, oldpath, newdirfd, newpath, 0);
+        if (ret < 0)
+                return -errno;
+
+        ret = unlinkat(olddirfd, oldpath, 0);
+        if (ret < 0) {
+                /* backup errno before the following unlinkat() alters it */
+                ret = errno;
+                (void) unlinkat(newdirfd, newpath, 0);
+                errno = ret;
+                return -errno;
+        }
+
+        return 0;
 }
 
 char *shell_maybe_quote(const char *s) {
