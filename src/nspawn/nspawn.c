@@ -1717,23 +1717,29 @@ static int setup_journal(const char *directory) {
         _cleanup_free_ char *p = NULL, *b = NULL, *q = NULL, *d = NULL;
         char *id;
         int r;
+        bool try;
 
         /* Don't link journals in ephemeral mode */
         if (arg_ephemeral)
                 return 0;
+
+        if (arg_link_journal == LINK_NO)
+                return 0;
+
+        try = arg_link_journal_try || arg_link_journal == LINK_AUTO;
 
         p = strappend(directory, "/etc/machine-id");
         if (!p)
                 return log_oom();
 
         r = read_one_line_file(p, &b);
-        if (r == -ENOENT && arg_link_journal == LINK_AUTO)
+        if (r == -ENOENT && try)
                 return 0;
         else if (r < 0)
                 return log_error_errno(r, "Failed to read machine ID from %s: %m", p);
 
         id = strstrip(b);
-        if (isempty(id) && arg_link_journal == LINK_AUTO)
+        if (isempty(id) && try)
                 return 0;
 
         /* Verify validity */
@@ -1746,15 +1752,12 @@ static int setup_journal(const char *directory) {
                 return log_error_errno(r, "Failed to retrieve machine ID: %m");
 
         if (sd_id128_equal(machine_id, this_id)) {
-                log_full(arg_link_journal == LINK_AUTO ? LOG_WARNING : LOG_ERR,
+                log_full(try ? LOG_WARNING : LOG_ERR,
                          "Host and machine ids are equal (%s): refusing to link journals", id);
-                if (arg_link_journal == LINK_AUTO)
+                if (try)
                         return 0;
                 return -EEXIST;
         }
-
-        if (arg_link_journal == LINK_NO)
-                return 0;
 
         free(p);
         p = strappend("/var/log/journal/", id);
@@ -1763,21 +1766,19 @@ static int setup_journal(const char *directory) {
                 return log_oom();
 
         if (path_is_mount_point(p, false) > 0) {
-                if (arg_link_journal != LINK_AUTO) {
-                        log_error("%s: already a mount point, refusing to use for journal", p);
-                        return -EEXIST;
-                }
+                if (try)
+                        return 0;
 
-                return 0;
+                log_error("%s: already a mount point, refusing to use for journal", q);
+                return -EEXIST;
         }
 
         if (path_is_mount_point(q, false) > 0) {
-                if (arg_link_journal != LINK_AUTO) {
-                        log_error("%s: already a mount point, refusing to use for journal", q);
-                        return -EEXIST;
-                }
+                if (try)
+                        return 0;
 
-                return 0;
+                log_error("%s: already a mount point, refusing to use for journal", q);
+                return -EEXIST;
         }
 
         r = readlink_and_make_absolute(p, &d);
@@ -1815,7 +1816,7 @@ static int setup_journal(const char *directory) {
         if (arg_link_journal == LINK_GUEST) {
 
                 if (symlink(q, p) < 0) {
-                        if (arg_link_journal_try) {
+                        if (try) {
                                 log_debug_errno(errno, "Failed to symlink %s to %s, skipping journal setup: %m", q, p);
                                 return 0;
                         } else {
@@ -1835,7 +1836,7 @@ static int setup_journal(const char *directory) {
                  * permanent journal set up, don't force it here */
                 r = mkdir(p, 0755);
                 if (r < 0) {
-                        if (arg_link_journal_try) {
+                        if (try) {
                                 log_debug_errno(errno, "Failed to create %s, skipping journal setup: %m", p);
                                 return 0;
                         } else {
