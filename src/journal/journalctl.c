@@ -1858,10 +1858,10 @@ static int flush_to_var(void) {
 
 static int rotate(void) {
         _cleanup_bus_error_free_ sd_bus_error error = SD_BUS_ERROR_NULL;
-        _cleanup_bus_flush_close_unref_ sd_bus *bus = NULL;
+        _cleanup_bus_unref_ sd_bus *bus = NULL;
         int r;
 
-        r = bus_connect_system_systemd(&bus);
+        r = bus_open_transport(BUS_TRANSPORT_LOCAL, NULL, false, &bus);
         if (r < 0)
                 return log_error_errno(r, "Failed to get D-Bus connection: %m");
 

@@ -97,12 +97,7 @@ void stdout_stream_free(StdoutStream *s) {
         }
 
         safe_close(s->fd);
-
-#ifdef HAVE_SELINUX
-        if (s->security_context)
-                freecon(s->security_context);
-#endif
-
+        free(s->label);
         free(s->identifier);
         free(s->unit_id);
         free(s->state_file);
@@ -482,7 +477,7 @@ static int stdout_stream_install(Server *s, int fd, StdoutStream **ret) {
 
 #ifdef HAVE_SELINUX
         if (mac_selinux_use()) {
-                if (getpeercon(fd, &stream->security_context) < 0 && errno != ENOPROTOOPT)
+                if (getpeercon(fd, &stream->label) < 0 && errno != ENOPROTOOPT)
                         log_error_errno(errno, "Failed to determine peer security context: %m");
         }
 #endif
