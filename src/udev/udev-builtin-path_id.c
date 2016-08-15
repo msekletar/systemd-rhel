@@ -709,6 +709,11 @@ restart:
                         parent = skip_subsystem(parent, "scm");
                         supported_transport = true;
                         supported_parent = true;
+                } else if (streq(subsys, "nvme")) {
+                        path_prepend(&path, "nvme-%s", udev_device_get_sysname(parent));
+                        parent = skip_subsystem(parent, "nvme");
+                        supported_parent = true;
+                        supported_transport = true;
                 }
 
                 parent = udev_device_get_parent(parent);
