@@ -61,6 +61,7 @@ typedef struct Server {
         int dev_kmsg_fd;
         int audit_fd;
         int hostname_fd;
+        int notify_fd;
 
         sd_event *event;
 
@@ -75,6 +76,7 @@ typedef struct Server {
         sd_event_source *sigterm_event_source;
         sd_event_source *sigint_event_source;
         sd_event_source *hostname_event_source;
+        sd_event_source *notify_event_source;
 
         JournalFile *runtime_journal;
         JournalFile *system_journal;
@@ -135,6 +137,7 @@ typedef struct Server {
 
         struct udev *udev;
 
+        bool sent_notify_ready;
         bool sync_scheduled;
 
         char machine_id_field[sizeof("_MACHINE_ID=") + 32];
