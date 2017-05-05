@@ -6,8 +6,8 @@
 
 Name:           systemd
 Url:            http://www.freedesktop.org/wiki/Software/systemd
-Version:        219
-Release:        35%{?dist}
+Version:        220
+Release:        1%{?dist}
 # For a breakdown of the licensing, see README
 License:        LGPLv2+ and MIT and GPLv2+
 Summary:        A System and Service Manager
@@ -1519,6 +1519,9 @@ fi
 %{_mandir}/man8/systemd-resolved.*
 
 %changelog
+* Fri May 05 2017 Michal Sekletar <msekleta@redhat.com> 220-1
+- new package built with tito
+
 * Tue Apr 11 2017 Lukas Nykryn <lnykryn@redhat.com> - 219-35
 - tmpfiles: add new 'e' action which cleans up a dir without creating it (#1225739)
 - util:bind_remount_recursive(): handle return 0 of set_consume() (#1433687)
