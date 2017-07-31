@@ -244,6 +244,14 @@ DEFINE_MEMPOOL(ordered_hashmap_pool, OrderedHashmap, 8);
 /* No need for a separate Set pool */
 assert_cc(sizeof(Hashmap) == sizeof(Set));
 
+#ifdef VALGRIND
+__attribute__((destructor)) static void cleanup_pools(void) {
+        /* Be nice to valgrind */
+        mempool_drop(&hashmap_pool);
+        mempool_drop(&ordered_hashmap_pool);
+}
+#endif
+
 struct hashmap_type_info {
         size_t head_size;
         size_t entry_size;
