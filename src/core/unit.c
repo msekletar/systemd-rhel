@@ -651,8 +651,9 @@ static void merge_dependencies(Unit *u, Unit *other, const char *other_id, UnitD
                 UnitDependency k;
 
                 for (k = 0; k < _UNIT_DEPENDENCY_MAX; k++) {
-                        /* Do not add dependencies between u and itself */
-                        if (back == u) {
+                        /* Do not add dependencies between u and itself and don't create dependency loops */
+                        if (back == u ||
+                            (set_contains(back->dependencies[k], other) && set_contains(u->dependencies[k], back))) {
                                 if (set_remove(back->dependencies[k], other))
                                         maybe_warn_about_dependency(u->id, other_id, k);
                         } else {
