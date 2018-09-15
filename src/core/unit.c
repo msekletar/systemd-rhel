@@ -2882,16 +2882,13 @@ int unit_add_two_dependencies(Unit *u, UnitDependency d, UnitDependency e, Unit 
         return unit_add_dependency(u, e, other, add_reference, mask);
 }
 
-static int resolve_template(Unit *u, const char *name, const char*path, char **buf, const char **ret) {
+static int resolve_template(Unit *u, const char *name, char **buf, const char **ret) {
         int r;
 
         assert(u);
-        assert(name || path);
+        assert(name);
         assert(buf);
         assert(ret);
-
-        if (!name)
-                name = basename(path);
 
         if (!unit_name_is_valid(name, UNIT_NAME_TEMPLATE)) {
                 *buf = NULL;
@@ -2925,7 +2922,7 @@ int unit_add_dependency_by_name(Unit *u, UnitDependency d, const char *name, boo
         assert(u);
         assert(name);
 
-        r = resolve_template(u, name, NULL, &buf, &name);
+        r = resolve_template(u, name, &buf, &name);
         if (r < 0)
                 return r;
 
@@ -2944,7 +2941,7 @@ int unit_add_two_dependencies_by_name(Unit *u, UnitDependency d, UnitDependency 
         assert(u);
         assert(name);
 
-        r = resolve_template(u, name, NULL, &buf, &name);
+        r = resolve_template(u, name, &buf, &name);
         if (r < 0)
                 return r;
 
