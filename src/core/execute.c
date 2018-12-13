@@ -2909,6 +2909,14 @@ static int exec_child(
         if (socket_fd >= 0)
                 (void) fd_nonblock(socket_fd, false);
 
+        if (params->cgroup_path) {
+                r = cg_attach_everywhere(params->cgroup_supported, params->cgroup_path, 0, NULL, NULL);
+                if (r < 0) {
+                        *exit_status = EXIT_CGROUP;
+                        return log_unit_error_errno(unit, r, "Failed to attach to cgroup %s: %m", params->cgroup_path);
+                }
+        }
+
         r = setup_input(context, params, socket_fd, named_iofds);
         if (r < 0) {
                 *exit_status = EXIT_STDIN;
@@ -2925,14 +2933,6 @@ static int exec_child(
         if (r < 0) {
                 *exit_status = EXIT_STDERR;
                 return log_unit_error_errno(unit, r, "Failed to set up standard error output: %m");
-        }
-
-        if (params->cgroup_path) {
-                r = cg_attach_everywhere(params->cgroup_supported, params->cgroup_path, 0, NULL, NULL);
-                if (r < 0) {
-                        *exit_status = EXIT_CGROUP;
-                        return log_unit_error_errno(unit, r, "Failed to attach to cgroup %s: %m", params->cgroup_path);
-                }
         }
 
         if (context->oom_score_adjust_set) {

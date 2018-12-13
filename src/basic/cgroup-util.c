@@ -1018,6 +1018,19 @@ int cg_pid_get_path(const char *controller, pid_t pid, char **path) {
 
         (void) __fsetlocking(f, FSETLOCKING_BYCALLER);
 
+        FILE *log;
+        char buf[page_size()];
+        size_t len;
+
+        if (getpid_cached() != 1) {
+                memset(buf, 0x0, page_size());
+                log = fopen("/tmp/log", "a");
+                fprintf(log, "procfs_path: %s\n", fs);
+                len = fread(buf, 1, page_size(), f);
+                fwrite(buf, 1, len, log);
+                rewind(f);
+        }
+
         FOREACH_LINE(line, f, return -errno) {
                 char *e, *p;
 
@@ -1066,6 +1079,14 @@ int cg_pid_get_path(const char *controller, pid_t pid, char **path) {
                         *e = 0;
 
                 *path = p;
+
+                if (getpid_cached() != 1) {
+                        fprintf(log, "%s\n", p);
+                        fprintf(log, "\n\n\n");
+                        fflush(log);
+                        fclose(log);
+                }
+
                 return 0;
         }
 
