@@ -250,9 +250,10 @@ static int client_context_read_cgroup(Server *s, ClientContext *c, const char *u
 
         /* Try to acquire the current cgroup path */
         r = cg_pid_get_path_shifted(c->pid, s->cgroup_root, &t);
-        if (r < 0) {
+        if (r < 0 || streq_ptr(t, "/")) {
 
-                /* If that didn't work, we use the unit ID passed in as fallback, if we have nothing cached yet */
+                /* We use the unit ID passed in as fallback if we have nothing cached yet and cg_pid_get_path_shifted()
+                 * failed or we run with cgroupsv1 and process that produced the log message is already zombie */
                 if (unit_id && !c->unit) {
                         c->unit = strdup(unit_id);
                         if (c->unit)
